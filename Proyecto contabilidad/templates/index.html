@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Asientos Contables</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        #asiento-actual {
+            min-height: 100px;
+        }
+        .asiento-header {
+            background-color: #e9ecef;
+            font-weight: bold;
+            text-align: center;
+        }
+        .descripcion-linea {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .descripcion-general {
+            font-style: italic;
+            background-color: #f1f3f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Sistema de Asientos Contables</h1>
+
+        <!-- Formulario para agregar líneas -->
+        <div class="card">
+            <div class="card-header">Agregar Línea al Asiento</div>
+            <div class="card-body">
+                <form id="form-linea">
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label for="codigo" class="form-label">Código</label>
+                            <input type="text" class="form-control" id="codigo" name="codigo" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="nombre" class="form-label">Nombre Cuenta</label>
+                            <input type="text" class="form-control" id="nombre" disabled>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="monto" class="form-label">Monto</label>
+                            <input type="number" step="0.01" class="form-control" id="monto" name="monto" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="naturaleza" class="form-label">Naturaleza</label>
+                            <select class="form-select" id="naturaleza" name="naturaleza" required>
+                                <option value="Debe">Debe</option>
+                                <option value="Haber">Haber</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="descripcion_linea" class="form-label">Descripción</label>
+                            <input type="text" class="form-control" id="descripcion_linea" name="descripcion_linea">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Línea</button>
+                    <span id="mensaje-linea" class="text-danger"></span>
+                </form>
+            </div>
+        </div>
+
+        <!-- Asiento actual -->
+        <div class="card">
+            <div class="card-header">Asiento Actual</div>
+            <div class="card-body">
+                <table class="table table-striped" id="asiento-actual">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Debe</th>
+                            <th>Haber</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <form id="form-finalizar" class="mt-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="fecha" class="form-label">Fecha</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="descripcion_general" class="form-label">Descripción General</label>
+                            <input type="text" class="form-control" id="descripcion_general" name="descripcion_general" required>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">Finalizar Asiento</button>
+                        </div>
+                    </div>
+                    <span id="mensaje-finalizar" class="text-danger mt-2 d-block"></span>
+                </form>
+            </div>
+        </div>
+
+        <!-- Historial de asientos -->
+        <div class="card">
+            <div class="card-header">Historial de Asientos</div>
+            <div class="card-body">
+                <form id="form-pdf" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="nombre_empresa" class="form-label">Nombre de la Empresa</label>
+                            <input type="text" class="form-control" id="nombre_empresa" name="nombre_empresa" required>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Generar PDF</button>
+                        </div>
+                    </div>
+                    <span id="mensaje-pdf" class="text-danger mt-2 d-block"></span>
+                </form>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Debe</th>
+                            <th>Haber</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asiento in asientos %}
+                        {% set num_lineas = asiento.lineas|length %}
+                        <!-- Fila de fecha centrada -->
+                        <tr class="asiento-header">
+                            <td rowspan="{{ num_lineas + 2 }}" class="align-middle">{{ asiento.fecha }}</td>
+                            <td colspan="4">Asiento Registrado</td>
+                        </tr>
+                        <!-- Líneas del asiento -->
+                        {% for linea in asiento.lineas %}
+                        <tr>
+                            <td>{{ linea.codigo }}</td>
+                            <td>
+                                {{ linea.nombre }}<br>
+                                <span class="descripcion-linea">{{ linea.descripcion_linea or '' }}</span>
+                            </td>
+                            <td>{{ "{:,.2f}".format(linea.monto) if linea.naturaleza == 'Debe' else '' }}</td>
+                            <td>{{ "{:,.2f}".format(linea.monto) if linea.naturaleza == 'Haber' else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                        <!-- Totales y descripción general -->
+                        <tr>
+                            <td>Totales</td>
+                            <td></td>
+                            <td>{{ "{:,.2f}".format(asiento.total_debe) }}</td>
+                            <td>{{ "{:,.2f}".format(asiento.total_haber) }}</td>
+                        </tr>
+                        <tr class="descripcion-general">
+                            <td colspan="5">Descripción General: {{ asiento.descripcion_general }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS y jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Buscar cuenta al cambiar el código
+        $('#codigo').on('change', function() {
+            $.post('/buscar_cuenta', { codigo: $(this).val() }, function(data) {
+                if (data.success) {
+                    $('#nombre').val(data.nombre);
+                } else {
+                    $('#nombre').val('');
+                    $('#mensaje-linea').text(data.mensaje);
+                }
+            });
+        });
+
+        // Agregar línea al asiento actual
+        $('#form-linea').on('submit', function(e) {
+            e.preventDefault();
+            $.post('/agregar_linea', $(this).serialize(), function(data) {
+                if (data.success) {
+                    const linea = data.linea;
+                    const debe = linea.naturaleza === 'Debe' ? linea.monto.toFixed(2) : '';
+                    const haber = linea.naturaleza === 'Haber' ? linea.monto.toFixed(2) : '';
+                    $('#asiento-actual tbody').append(`
+                        <tr>
+                            <td>${linea.codigo}</td>
+                            <td>${linea.nombre}<br><span class="descripcion-linea">${linea.descripcion_linea || ''}</span></td>
+                            <td>${debe}</td>
+                            <td>${haber}</td>
+                        </tr>
+                    `);
+                    $('#form-linea')[0].reset();
+                    $('#nombre').val('');
+                    $('#mensaje-linea').text('');
+                } else {
+                    $('#mensaje-linea').text(data.mensaje);
+                }
+            });
+        });
+
+        // Finalizar asiento
+        $('#form-finalizar').on('submit', function(e) {
+            e.preventDefault();
+            $.post('/finalizar_asiento', $(this).serialize(), function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    $('#mensaje-finalizar').text(data.mensaje);
+                }
+            });
+        });
+
+        // Generar PDF
+        $('#form-pdf').on('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/generar_pdf', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.mensaje || 'Error al generar el PDF');
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Historial_Asientos_${$('#nombre_empresa').val()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                $('#mensaje-pdf').text('');
+            })
+            .catch(error => {
+                $('#mensaje-pdf').text(error.message);
+            });
+        });
+    </script>
+</body>
+</html>
